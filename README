@@ -1,0 +1,13 @@
+http://hackage.haskell.org/package/newtype-th
+
+Provides a template haskell based mechanism for
+deriving instances of djahandarie's Control.Newtype class.
+
+To build / install:
+
+chmod ugo+x Setup.hs
+./Setup.hs configure --user
+./Setup.hs build
+./Setup.hs install
+
+See the haddock or Control/Newtype/TH.hs for documentation.

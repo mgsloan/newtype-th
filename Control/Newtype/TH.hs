@@ -1,18 +1,26 @@
 {-# LANGUAGE TemplateHaskell #-}
-{- |
-This module provides a template Haskell based mechanism for deriving
-instances of the Newtype class, defined in Control.Newtype.  Example usage:
 
-> newtype CartesianList a = CartesianList [a]
-> $(mkNewTypes [''CartesianList])
->
-> instance Monoid (CartesianList a) where
->   mempty = pack [[]]
->   a `mappend` b = pack [x ++ y | x <- unpack a, y <- unpack b]
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Control.Newtype.TH
+-- Copyright   :  Michael Sloan 2011
+--
+-- Maintainer  :  Michael Sloan (mgsloan@gmail.com)
+-- Portability :  unportable
+--
+-- This module provides a template Haskell based mechanism for deriving
+-- instances of the Newtype class, defined in Control.Newtype.  Example usage:
+-- 
+-- > newtype CartesianList a = CartesianList [a]
+-- > $(mkNewTypes [''CartesianList])
+-- >
+-- > instance Monoid (CartesianList a) where
+-- >   mempty = pack [[]]
+-- >   a `mappend` b = pack [x ++ y | x <- unpack a, y <- unpack b]
+-- 
+-- > *Main> print $ underF CartesianList (\xs -> [fold xs]) ([[[4],[5],[6]], [[1],[2]], [[0]]])
+-- > [[[4,1,0],[4,2,0],[5,1,0],[5,2,0],[6,1,0],[6,2,0]]]
 
-> *Main> print $ underF CartesianList (\xs -> [fold xs]) ([[[4],[5],[6]], [[1],[2]], [[0]]])
-> [[[4,1,0],[4,2,0],[5,1,0],[5,2,0],[6,1,0],[6,2,0]]]
--}
 module Control.Newtype.TH (mkNewTypes) where
 
 import Control.Monad (liftM)
