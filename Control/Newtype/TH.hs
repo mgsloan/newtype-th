@@ -40,11 +40,11 @@ mkNewTypes = mapM mkInst
         (foldl1 AppT [ConT ''Newtype, bndrsToType (ConT name) vs, head $ conTypes con])
         (defs (conName con))
     mkInstH name _ = error $ show name ++ " is not a Newtype"
-    defs cnam =
-      [ FunD 'unpack [Clause [ConP cnam [VarP xnam]] (NormalB $ VarE xnam) []]
-      , FunD 'pack   [Clause [] (NormalB (ConE cnam)) []]
+    defs cname =
+      [ FunD 'unpack [Clause [ConP cname [VarP xname]] (NormalB $ VarE xname) []]
+      , FunD 'pack   [Clause [] (NormalB (ConE cname)) []]
       ]
-    xnam = mkName "x"
+    xname = mkName "x"
 
 -- Given a root type and a list of type variables, converts for use as
 -- parameters to the newtype's type in the instance head.
