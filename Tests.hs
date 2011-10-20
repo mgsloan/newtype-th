@@ -1,4 +1,5 @@
-{-# LANGUAGE TemplateHaskell, FlexibleInstances, MultiParamTypeClasses, KindSignatures #-}
+{-# LANGUAGE DatatypeContexts, FlexibleInstances, MultiParamTypeClasses,
+             KindSignatures, TemplateHaskell #-}
 
 import Control.Newtype
 import Control.Newtype.TH
@@ -9,7 +10,9 @@ newtype Yarn = Yarn String
 
 newtype Occasionally a = Occasionally (Maybe a)
 
-newtype (Num a, Show b) => Endocrine a b = Endocrine { pump :: a -> b }
+-- Test that 'DatatypeContexts' are used as class constraints, despite this
+-- extension being deprecated.
+newtype (Num a, Show b) => ShowNum a b = ShowNum { pump :: a -> b }
 
 newtype Kinda (a :: * -> *) (b :: *) = Kinda b
 
@@ -19,7 +22,7 @@ instance Monoid (CartesianList a) where
   mempty = pack [[]]
   a `mappend` b = pack [x ++ y | x <- unpack a, y <- unpack b]
 
-$(mkNewTypes [''Yarn, ''Occasionally, ''Endocrine, ''Kinda, ''CartesianList])
+$(mkNewTypes [''Yarn, ''Occasionally, ''ShowNum , ''Kinda, ''CartesianList])
 
 pun :: (Newtype a b, Show b) => a -> IO ()
 pun = print . unpack
@@ -34,7 +37,7 @@ main = do
   -- Let's see if we can use them. Going to assume that pack works..
   pun $ Yarn "ball"
   pun . Occasionally $ Just "ice"
-  print $ unpack (Endocrine show) 42
+  print $ unpack (ShowNum show) 42
   pun . klift $ 5
   print $ underF CartesianList (\xs -> [fold xs])
     [[[4],[5],[6]], [[1],[2]], [[0]]]
