@@ -23,14 +23,12 @@
 
 module Control.Newtype.TH (mkNewTypes) where
 
-import Control.Monad (liftM)
-
 import Language.Haskell.TH
 import Language.Haskell.Meta.Utils (conName, conTypes)
 
 -- | Derive instances of Newtype, specified as a list of references to newtypes.
 mkNewTypes :: [Name] -> Q [Dec]
-mkNewTypes = liftM concat . mapM (\n -> reify n >>= return . mkInst)
+mkNewTypes = fmap concat . mapM (fmap mkInst . reify)
   where mkInst (TyConI (NewtypeD context name vs con _)) =
           [InstanceD context
           -- Construct the class declaration
