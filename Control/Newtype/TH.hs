@@ -26,6 +26,8 @@ module Control.Newtype.TH (mkNewTypes) where
 import Language.Haskell.TH
 import Language.Haskell.Meta.Utils (conName, conTypes)
 
+import Control.Newtype (Newtype(pack, unpack))
+
 -- | Derive instances of Newtype, specified as a list of references to newtypes.
 mkNewTypes :: [Name] -> Q [Dec]
 mkNewTypes = fmap concat . mapM (fmap mkInst . reify)
@@ -33,15 +35,15 @@ mkNewTypes = fmap concat . mapM (fmap mkInst . reify)
           [InstanceD context
           -- Construct the class declaration
           -- "class Newtype (<newtype> a ...) (<field type> a ...) where"
-          (AppT (AppT (ConT $ mkName "Control.Newtype.Newtype")
+          (AppT (AppT (ConT ''Newtype)
                 $ bndrsToType (ConT name) vs)
           . head $ conTypes con)
           (defs (mkName "x") (conName con))]
         mkInst _ = []
         defs xnam cnam =
-          [ FunD (mkName "unpack")
+          [ FunD 'unpack
              [Clause [ConP cnam [VarP xnam]] (NormalB $ VarE xnam) []]
-          , FunD (mkName "pack")
+          , FunD 'pack
              [Clause [] (NormalB $ (ConE cnam)) []]
           ]
 
