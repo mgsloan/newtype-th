@@ -1,12 +1,11 @@
-{-# LANGUAGE TemplateHaskell, FlexibleInstances, MultiParamTypeClasses,
-KindSignatures #-}
+{-# LANGUAGE TemplateHaskell, FlexibleInstances, MultiParamTypeClasses, KindSignatures #-}
 
 import Control.Newtype
 import Control.Newtype.TH
 import Data.Monoid
 import Data.Foldable (fold)
 
-newtype Yarn = Yarn [Char]
+newtype Yarn = Yarn String
 
 newtype Occasionally a = Occasionally (Maybe a)
 
@@ -38,4 +37,4 @@ main = do
   print $ unpack (Endocrine show) 42
   pun . klift $ 5
   print $ underF CartesianList (\xs -> [fold xs])
-    ([[[4],[5],[6]], [[1],[2]], [[0]]])
+    [[[4],[5],[6]], [[1],[2]], [[0]]]
