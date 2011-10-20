@@ -32,20 +32,19 @@ import Control.Newtype (Newtype(pack, unpack))
 mkNewTypes :: [Name] -> Q [Dec]
 mkNewTypes = fmap concat . mapM (fmap mkInst . reify)
   where mkInst (TyConI (NewtypeD context name vs con _)) =
+          -- Construct the instance declaration
+          -- "instance Newtype (<newtype> a ...) (<field type> a ...) where"
           [InstanceD context
-          -- Construct the class declaration
-          -- "class Newtype (<newtype> a ...) (<field type> a ...) where"
-          (AppT (AppT (ConT ''Newtype)
-                $ bndrsToType (ConT name) vs)
-          . head $ conTypes con)
-          (defs (mkName "x") (conName con))]
+           (foldl1 AppT [ConT ''Newtype, bndrsToType (ConT name) vs, head $ conTypes con])
+           (defs (conName con))]
         mkInst _ = []
-        defs xnam cnam =
+        defs cnam =
           [ FunD 'unpack
              [Clause [ConP cnam [VarP xnam]] (NormalB $ VarE xnam) []]
           , FunD 'pack
-             [Clause [] (NormalB $ (ConE cnam)) []]
+             [Clause [] (NormalB (ConE cnam)) []]
           ]
+        xnam = mkName "x"
 
 -- Given a root type and a list of type variables, converts for use as
 -- parameters to the newtype's type in the instance head.
@@ -53,7 +52,7 @@ bndrsToType :: Type -> [TyVarBndr] -> Type
 bndrsToType = foldl (\x y -> AppT x $ bndrToType y)
 
 -- This converts a type variable binding to a type.  Preserving kind
--- signatures is probably unecessary, but we might as well.
+-- signatures is probably unnecessary, but we might as well.
 bndrToType :: TyVarBndr -> Type
 bndrToType (PlainTV x) = VarT x
 bndrToType (KindedTV x k) = SigT (VarT x) k
