@@ -1,7 +1,4 @@
-{-# LANGUAGE TemplateHaskell 
-           , TupleSections
-           , RankNTypes
-  #-}
+{-# LANGUAGE TemplateHaskell, TupleSections #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Control.Newtype.TH
