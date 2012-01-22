@@ -27,7 +27,7 @@ module Control.Newtype.TH ( mkNewTypes ) where
 import Control.Newtype ( Newtype(pack, unpack) )
 
 import Control.Applicative   ((<$>))
-import Control.Arrow         ((&&&))
+import Control.Arrow         ((&&&), (***))
 import Data.Function         ( on )
 import Data.List             ( groupBy, sortBy, find, nub )
 import Data.Maybe            ( catMaybes )
@@ -77,8 +77,8 @@ rewriteFamilies (InstanceD preds ity ds) = do
   fams <- mapM (\(ns, t) -> (ns, t, ) . VarT <$> newName "f")
   -- Merge all of the identical applications of the family constructor.
         . map (nub . map snd &&& (snd . fst . head))
-        . groupBy ((==) `on` (snd . fst))
-        . sortBy (comparing (fst . fst)) 
+        . groupBy ((==) `on` fst)
+        . sortBy (comparing ((id *** show) . fst)) 
         . catMaybes $ map process infos
   -- Build resulting instance
   -- TODO: consider substituting into other predicates too?

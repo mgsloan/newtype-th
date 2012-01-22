@@ -28,12 +28,15 @@ instance Monoid (CartesianList a) where
   mempty = pack [[]]
   a `mappend` b = pack [x ++ y | x <- unpack a, y <- unpack b]
 
+$(mkNewTypes [''Yarn, ''Occasionally, ''ShowNum , ''Kinda, ''CartesianList])
+
 type family V a :: *
 type instance V [a] = V a
+newtype Familial1 a = Familial1 (V a)
+newtype Familial2 a = Familial2 (V a, V a)
+newtype Familial3 a = Familial3 (V a, V (V a))
 
-newtype Familial a = Familial (V a)
-
-$(mkNewTypes [''Yarn, ''Occasionally, ''ShowNum , ''Kinda, ''CartesianList, ''Familial])
+$(mkNewTypes [''Familial1, ''Familial2, ''Familial3])
 
 pun :: (Newtype a b, Show b) => a -> IO ()
 pun = print . unpack
