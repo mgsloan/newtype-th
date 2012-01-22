@@ -8,7 +8,8 @@
 -- Portability :  unportable
 --
 -- This module provides a template Haskell based mechanism for deriving
--- instances of the Newtype class, defined in Control.Newtype.  Example usage:
+-- instances of the @Newtype@ class, defined in @ Control.Newtype @ in the
+-- newtype package.  Example usage:
 -- 
 -- > newtype CartesianList a = CartesianList [a]
 -- > $(mkNewTypes [''CartesianList])
@@ -39,7 +40,7 @@ import Data.Generics.Aliases ( extT, extQ )
 import Language.Haskell.TH
 import Language.Haskell.Meta.Utils (conName, conTypes)
 
--- | Derive instances of Newtype, specified as a list of references to newtypes.
+-- | Derive instances of @Newtype@, specified as a list of references to newtypes.
 mkNewTypes :: [Name] -> Q [Dec]
 mkNewTypes = mapM mkInst
   where
