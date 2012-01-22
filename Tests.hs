@@ -1,5 +1,11 @@
-{-# LANGUAGE DatatypeContexts, FlexibleInstances, MultiParamTypeClasses,
-             KindSignatures, TemplateHaskell #-}
+{-# LANGUAGE DatatypeContexts
+           , FlexibleInstances
+           , KindSignatures
+           , MultiParamTypeClasses
+           , TemplateHaskell
+           , TypeFamilies
+           , UndecidableInstances
+  #-}
 
 import Control.Newtype
 import Control.Newtype.TH
@@ -22,7 +28,12 @@ instance Monoid (CartesianList a) where
   mempty = pack [[]]
   a `mappend` b = pack [x ++ y | x <- unpack a, y <- unpack b]
 
-$(mkNewTypes [''Yarn, ''Occasionally, ''ShowNum , ''Kinda, ''CartesianList])
+type family V a :: *
+type instance V [a] = V a
+
+newtype Familial a = Familial (V a)
+
+$(mkNewTypes [''Yarn, ''Occasionally, ''ShowNum , ''Kinda, ''CartesianList, ''Familial])
 
 pun :: (Newtype a b, Show b) => a -> IO ()
 pun = print . unpack

@@ -1,5 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
-
+{-# LANGUAGE TemplateHaskell 
+           , TupleSections
+           , RankNTypes
+  #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Control.Newtype.TH
@@ -20,19 +22,31 @@
 -- 
 -- > *Main> print $ underF CartesianList (\xs -> [fold xs]) ([[[4],[5],[6]], [[1],[2]], [[0]]])
 -- > [[[4,1,0],[4,2,0],[5,1,0],[5,2,0],[6,1,0],[6,2,0]]]
+--
+-----------------------------------------------------------------------------
 
-module Control.Newtype.TH (mkNewTypes) where
+module Control.Newtype.TH ( mkNewTypes ) where
+
+import Control.Newtype ( Newtype(pack, unpack) )
+
+import Control.Applicative   ((<$>))
+import Control.Arrow         ((&&&))
+import Data.Function         ( on )
+import Data.List             ( groupBy, sortBy, find, nub )
+import Data.Maybe            ( catMaybes )
+import Data.Ord              ( comparing )
+import Data.Generics         ( Data(gmapQ) )
+import Data.Generics.Schemes ( everywhere' )
+import Data.Generics.Aliases ( extT, extQ )
 
 import Language.Haskell.TH
 import Language.Haskell.Meta.Utils (conName, conTypes)
-
-import Control.Newtype (Newtype(pack, unpack))
 
 -- | Derive instances of Newtype, specified as a list of references to newtypes.
 mkNewTypes :: [Name] -> Q [Dec]
 mkNewTypes = mapM mkInst
   where
-    mkInst name = fmap (mkInstH name) $ reify name
+    mkInst name = rewriteFamilies =<< mkInstH name <$> reify name
     mkInstH name (TyConI (NewtypeD context _ vs con _)) =
       -- Construct the instance declaration
       -- "instance Newtype (<newtype> a ...) (<field type> a ...) where"
@@ -56,3 +70,45 @@ bndrsToType = foldl (\x y -> AppT x $ bndrToType y)
 bndrToType :: TyVarBndr -> Type
 bndrToType (PlainTV x) = VarT x
 bndrToType (KindedTV x k) = SigT (VarT x) k
+
+-- This rewrites type family instances to equality constraints.
+rewriteFamilies :: Dec -> Q Dec
+rewriteFamilies (InstanceD preds ity ds) = do
+  -- Infos of every type constructor that's applied to something else.
+  infos <- mapM (\(n, t) -> (n, t, ) <$> reify n) $ apps ity
+  -- Each one that's determined to be a family constraint.
+  fams <- mapM (\(ns, t) -> (ns, t, ) . VarT <$> newName "f")
+  -- Merge all of the identical applications of the family constructor.
+        . map (nub . map snd &&& (snd . fst . head))
+        . groupBy ((==) `on` (snd . fst))
+        . sortBy (comparing (fst . fst)) 
+        . catMaybes $ map process infos
+  -- Build resulting instance
+  -- TODO: consider substituting into other predicates too?
+  return $ InstanceD (preds' fams) (ity' fams) ds
+ where
+  process (n, t, TyConI (FamilyD _ n' _ _)) = Just ((n', t), n)
+  process _ = Nothing
+
+  preds' fams = map (\((n:_),  t, v) -> EqualP v (AppT (ConT n) t)) fams ++ preds
+
+  ity' :: [([Name], Type, Type)] -> Type
+  ity' fams = everywhere' (id `extT` handleType) ity
+   where
+    handleType :: Type -> Type
+    handleType app@(AppT (ConT n) r)
+      = case find (\(ns, t, _) -> n `elem` ns && t == r) fams of
+          Just (_, _, v) -> v
+          Nothing -> app
+    handleType t = t
+
+  apps :: Type -> [(Name, Type)]
+  apps = handleType
+   where
+    handleType :: Type -> [(Name, Type)]
+    handleType (AppT (ConT v) r) = (v, r) : handleType r
+    handleType t = generic t
+    generic :: Data a => a -> [(Name, Type)]
+    generic = concat . gmapQ (const [] `extQ` handleType)
+
+rewriteFamilies d = return d
