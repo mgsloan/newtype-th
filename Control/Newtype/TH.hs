@@ -28,7 +28,7 @@ module Control.Newtype.TH ( mkNewTypes ) where
 import Control.Newtype ( Newtype(pack, unpack) )
 
 import Control.Applicative   ((<$>))
-import Control.Arrow         ((&&&), (***))
+import Control.Arrow         ((&&&))
 import Data.Function         ( on )
 import Data.List             ( groupBy, sortBy, find, nub )
 import Data.Maybe            ( catMaybes )
@@ -40,23 +40,28 @@ import Data.Generics.Aliases ( extT, extQ )
 import Language.Haskell.TH
 import Language.Haskell.Meta.Utils (conName, conTypes)
 
--- | Derive instances of @Newtype@, specified as a list of references to newtypes.
+-- | Derive instances of @Newtype@, specified as a list of references
+--   to newtypes.
 mkNewTypes :: [Name] -> Q [Dec]
-mkNewTypes = mapM mkInst
-  where
-    mkInst name = rewriteFamilies =<< mkInstH name <$> reify name
-    mkInstH name (TyConI (NewtypeD context _ vs con _)) =
-      -- Construct the instance declaration
-      -- "instance Newtype (<newtype> a ...) (<field type> a ...) where"
-      InstanceD context
-        (foldl1 AppT [ConT ''Newtype, bndrsToType (ConT name) vs, head $ conTypes con])
-        (defs (conName con))
-    mkInstH name _ = error $ show name ++ " is not a Newtype"
-    defs cname =
-      [ FunD 'unpack [Clause [ConP cname [VarP xname]] (NormalB $ VarE xname) []]
-      , FunD 'pack   [Clause [] (NormalB (ConE cname)) []]
-      ]
+mkNewTypes = mapM (\n -> rewriteFamilies =<< mkInstH n <$> reify n)
+ where
+--Construct the instance declaration
+-- "instance Newtype (<newtype> a ...) (<field type> a ...) where"
+  mkInstH name (TyConI (NewtypeD context _ vs con _))
+    = InstanceD context
+    ( foldl1 AppT [ ConT ''Newtype
+                  , bndrsToType (ConT name) vs
+                  , head $ conTypes con
+                  ] )
+    [ FunD 'pack   [ Clause [] 
+                            (NormalB $ ConE cname) [] ]
+    , FunD 'unpack [ Clause [ConP cname [VarP xname]] 
+                            (NormalB $ VarE xname) [] ]
+    ]
+   where
+    cname = conName con
     xname = mkName "x"
+  mkInstH name _ = error $ show name ++ " is not a Newtype"
 
 -- Given a root type and a list of type variables, converts for use as
 -- parameters to the newtype's type in the instance head.
@@ -74,21 +79,26 @@ rewriteFamilies :: Dec -> Q Dec
 rewriteFamilies (InstanceD preds ity ds) = do
   -- Infos of every type constructor that's applied to something else.
   infos <- mapM (\(n, t) -> (n, t, ) <$> reify n) $ apps ity
-  -- Each one that's determined to be a family constraint.
+  -- Every unique family constraint found, each with a new name.
   fams <- mapM (\(ns, t) -> (ns, t, ) . VarT <$> newName "f")
-  -- Merge all of the identical applications of the family constructor.
-        . map (nub . map snd &&& (snd . fst . head))
-        . groupBy ((==) `on` fst)
-        . sortBy (comparing ((id *** show) . fst)) 
-        . catMaybes $ map process infos
-  -- Build resulting instance
-  -- TODO: consider substituting into other predicates too?
+        . mergeApps . catMaybes $ map justFamily infos
+  -- Build resulting instance.
   return $ InstanceD (preds' fams) (ity' fams) ds
  where
-  process (n, t, TyConI (FamilyD _ n' _ _)) = Just ((n', t), n)
-  process _ = Nothing
+-- Selects for just family declarations, and yields the name used to
+-- refer to it, along with the cannonical reified name and the passed
+-- type.
+  justFamily :: (Name, Type, Info) -> Maybe (Name, (Name, Type))
+  justFamily (n, t, TyConI (FamilyD _ n' _ _)) = Just (n, (n', t))
+  justFamily _ = Nothing
 
-  preds' fams = map (\((n:_),  t, v) -> EqualP v (AppT (ConT n) t)) fams ++ preds
+-- Merges all of the identical applications of the family constructor.
+  mergeApps :: [(Name, (Name, Type))] -> [([Name], Type)]
+  mergeApps = map (nub . map fst &&& (snd . snd . head))
+            . groupBy ((==) `on` snd) . sortBy (comparing snd) 
+
+  preds' = (preds ++)
+         . map (\((n:_),  t, v) -> EqualP v (AppT (ConT n) t))
 
   ity' :: [([Name], Type, Type)] -> Type
   ity' fams = everywhere' (id `extT` handleType) ity
@@ -100,11 +110,16 @@ rewriteFamilies (InstanceD preds ity ds) = do
           Nothing -> app
     handleType t = t
 
+  -- Enumerates all of the found instances of an application of a
+  -- type constructor.
   apps :: Type -> [(Name, Type)]
   apps = handleType
    where
     handleType :: Type -> [(Name, Type)]
     handleType (AppT (ConT v) r) = (v, r) : handleType r
+    handleType (AppT (SigT t _) r) = handleType (AppT t r)
+--TODO: any conceivable reason to special-case (AppT (ForallT ...)) ?
+--    handleType (AppT (SigT t) r) = 
     handleType t = generic t
     generic :: Data a => a -> [(Name, Type)]
     generic = concat . gmapQ (const [] `extQ` handleType)

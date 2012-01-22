@@ -1,5 +1,5 @@
 Name:                newtype-th
-Version:             0.3
+Version:             0.3.1
 Synopsis:            A template haskell deriver to create Control.Newtype instances.
 Description:         Provides a template haskell based mechanism for
                      deriving instances of djahandarie's Control.Newtype class.
