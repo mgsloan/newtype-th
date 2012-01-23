@@ -43,25 +43,28 @@ import Language.Haskell.Meta.Utils (conName, conTypes)
 -- | Derive instances of @Newtype@, specified as a list of references
 --   to newtypes.
 mkNewTypes :: [Name] -> Q [Dec]
-mkNewTypes = mapM (\n -> rewriteFamilies =<< mkInstH n <$> reify n)
+mkNewTypes = mapM (\n -> rewriteFamilies =<< mkInst <$> reify n)
  where
+  mkInst (TyConI (NewtypeD a b c  d  _)) = mkInstFor a b c d
+  mkInst (TyConI (DataD    a b c [d] _)) = mkInstFor a b c d
+  mkInst x
+    = error $ show x
+    ++ " is not a Newtype or single-field single-constructor datatype."
+  
 --Construct the instance declaration
 -- "instance Newtype (<newtype> a ...) (<field type> a ...) where"
-  mkInstH name (TyConI (NewtypeD context _ vs con _))
+  mkInstFor context name bnds con
     = InstanceD context
     ( foldl1 AppT [ ConT ''Newtype
-                  , bndrsToType (ConT name) vs
+                  , bndrsToType (ConT name) bnds
                   , head $ conTypes con
                   ] )
-    [ FunD 'pack   [ Clause [] 
-                            (NormalB $ ConE cname) [] ]
-    , FunD 'unpack [ Clause [ConP cname [VarP xname]] 
-                            (NormalB $ VarE xname) [] ]
+    [ FunD 'pack   [Clause []                  (NormalB $ ConE cn) []]
+    , FunD 'unpack [Clause [ConP cn [VarP xn]] (NormalB $ VarE xn) []]
     ]
    where
-    cname = conName con
-    xname = mkName "x"
-  mkInstH name _ = error $ show name ++ " is not a Newtype"
+    cn = conName con
+    xn = mkName "x"
 
 -- Given a root type and a list of type variables, converts for use as
 -- parameters to the newtype's type in the instance head.
@@ -89,7 +92,11 @@ rewriteFamilies (InstanceD preds ity ds) = do
 -- refer to it, along with the cannonical reified name and the passed
 -- type.
   justFamily :: (Name, Type, Info) -> Maybe (Name, (Name, Type))
+#if __GLASGOW_HASKELL__ >= 704
+  justFamily (n, t, FamilyI (FamilyD _ n' _ _) _) = Just (n, (n', t))
+#else
   justFamily (n, t, TyConI (FamilyD _ n' _ _)) = Just (n, (n', t))
+#endif
   justFamily _ = Nothing
 
 -- Merges all of the identical applications of the family constructor.
