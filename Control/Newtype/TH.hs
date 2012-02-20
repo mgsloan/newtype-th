@@ -23,7 +23,7 @@
 --
 -----------------------------------------------------------------------------
 
-module Control.Newtype.TH ( mkNewTypes ) where
+module Control.Newtype.TH ( mkNewType, mkNewTypes ) where
 
 import Control.Newtype ( Newtype(pack, unpack) )
 
@@ -39,6 +39,10 @@ import Data.Generics.Aliases ( extT, extQ )
 
 import Language.Haskell.TH
 import Language.Haskell.Meta.Utils (conName, conTypes)
+
+-- | Derive a single instance of @Newtype@.
+mkNewType :: Name -> Q [Dec]
+mkNewType = mkNewTypes . (:[])
 
 -- | Derive instances of @Newtype@, specified as a list of references
 --   to newtypes.
