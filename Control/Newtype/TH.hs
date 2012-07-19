@@ -23,7 +23,9 @@
 --
 -----------------------------------------------------------------------------
 
-module Control.Newtype.TH ( mkNewType, mkNewTypes ) where
+module Control.Newtype.TH
+  ( mkNewtype, mkNewtypes
+  , mkNewType, mkNewTypes ) where
 
 import Control.Newtype ( Newtype(pack, unpack) )
 
@@ -41,13 +43,13 @@ import Language.Haskell.TH
 import Language.Haskell.Meta.Utils (conName, conTypes)
 
 -- | Derive a single instance of @Newtype@.
-mkNewType :: Name -> Q [Dec]
-mkNewType = mkNewTypes . (:[])
+mkNewtype :: Name -> Q [Dec]
+mkNewtype = mkNewTypes . (:[])
 
 -- | Derive instances of @Newtype@, specified as a list of references
 --   to newtypes.
-mkNewTypes :: [Name] -> Q [Dec]
-mkNewTypes = mapM (\n -> rewriteFamilies =<< mkInst <$> reify n)
+mkNewtypes :: [Name] -> Q [Dec]
+mkNewtypes = mapM (\n -> rewriteFamilies =<< mkInst <$> reify n)
  where
   mkInst (TyConI (NewtypeD a b c  d  _)) = mkInstFor a b c d
   mkInst (TyConI (DataD    a b c [d] _)) = mkInstFor a b c d
@@ -136,3 +138,14 @@ rewriteFamilies (InstanceD preds ity ds) = do
     generic = concat . gmapQ (const [] `extQ` handleType)
 
 rewriteFamilies d = return d
+
+
+{-# DEPRECATED Use mkNewtype instead. #-}
+-- | Compatibility with an old, ill-capitalized name.
+mkNewType :: Name -> Q [Dec]
+mkNewType = mkNewtype
+
+{-# DEPRECATED Use mkNewtypes instead. #-}
+-- | Compatibility with an old, ill-capitalized name.
+mkNewTypes :: [Name] -> Q [Dec]
+mkNewTypes = mkNewtypes
