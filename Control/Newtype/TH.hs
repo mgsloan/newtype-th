@@ -140,12 +140,12 @@ rewriteFamilies (InstanceD preds ity ds) = do
 rewriteFamilies d = return d
 
 
-{-# DEPRECATED Use mkNewtype instead. #-}
+{-# DEPRECATED mkNewType "Use mkNewtype instead (capitalization)." #-}
 -- | Compatibility with an old, ill-capitalized name.
 mkNewType :: Name -> Q [Dec]
 mkNewType = mkNewtype
 
-{-# DEPRECATED Use mkNewtypes instead. #-}
+{-# DEPRECATED mkNewTypes "Use mkNewtypes instead (capitalization)." #-}
 -- | Compatibility with an old, ill-capitalized name.
 mkNewTypes :: [Name] -> Q [Dec]
 mkNewTypes = mkNewtypes
